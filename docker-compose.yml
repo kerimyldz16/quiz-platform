@@ -1,0 +1,47 @@
+version: "3.9"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/app.Dockerfile
+    container_name: quiz-app
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - postgres
+    networks:
+      - quiz-net
+
+  redis:
+    image: redis:7
+    container_name: quiz-redis
+    command: redis-server /usr/local/etc/redis/redis.conf
+    volumes:
+      - ./infra/redis/redis.conf:/usr/local/etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 1s
+      retries: 30
+    networks:
+      - quiz-net
+
+  postgres:
+    image: postgres:15
+    container_name: quiz-postgres
+    environment:
+      POSTGRES_USER: quiz
+      POSTGRES_PASSWORD: quiz
+      POSTGRES_DB: quizdb
+    volumes:
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - quiz-net
+
+networks:
+  quiz-net:
+    driver: bridge
