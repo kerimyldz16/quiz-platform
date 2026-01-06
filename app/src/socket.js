@@ -1,8 +1,9 @@
+// app/src/socket.js
 import { Server } from "socket.io";
 import { authenticateSocket } from "./socketAuth.js";
 import { getGameState } from "./gameLifecycle.js";
 import { getRedis } from "./redis.js";
-import { questions } from "./questions.js";
+import { getQuestionsSnapshot } from "./questionStore.js";
 
 function publicQuestion(q) {
   return { id: q.id, text: q.text, options: q.options };
@@ -15,34 +16,41 @@ export function createSocketServer(httpServer) {
     try {
       const auth = await authenticateSocket(socket);
       socket.data = auth;
+
       socket.join("PLAYERS");
 
       const redis = getRedis();
 
-      // anlık game state
+      // Send current game state immediately
       const gs = await getGameState();
-      socket.emit("game:state", gs);
+      socket.emit(
+        "game:state",
+        gs || { state: "IDLE", startAt: null, totalQuestions: null }
+      );
 
       const token = String(socket.data.sessionToken);
       const pkey = `player:${token}`;
       const player = await redis.hGetAll(pkey);
 
-      // RUNNING ise oyuncuya kaldığı soruyu gönder (DONE değilse)
-      if (gs.state === "RUNNING" && player.status !== "DONE") {
+      // If running and player not done -> send current question
+      if (gs?.state === "RUNNING" && player?.status !== "DONE") {
         await redis.hSet(pkey, { status: "IN_GAME" });
 
+        const questions = await getQuestionsSnapshot();
         const idx = Number(player.qIndex || 0);
         const q = questions[idx];
-        if (q)
+
+        if (q) {
           socket.emit("question:current", {
             index: idx,
             question: publicQuestion(q),
           });
+        }
       }
 
       socket.on("answer", async ({ answer }) => {
         const gs2 = await getGameState();
-        if (gs2.state !== "RUNNING") return;
+        if (gs2?.state !== "RUNNING") return;
 
         const token2 = String(socket.data.sessionToken);
         const pkey2 = `player:${token2}`;
@@ -50,6 +58,9 @@ export function createSocketServer(httpServer) {
 
         if (!p || !p.playerId) return;
         if (p.status === "DONE") return;
+
+        const questions = await getQuestionsSnapshot();
+        const total = Number(gs2.totalQuestions || questions.length);
 
         const idx = Number(p.qIndex || 0);
         const q = questions[idx];
@@ -63,13 +74,15 @@ export function createSocketServer(httpServer) {
         await redis.hIncrBy(pkey2, "qIndex", 1);
 
         const nextIndex = idx + 1;
-        const total = Number(gs2.totalQuestions || questions.length);
 
         if (nextIndex < total) {
-          socket.emit("question:current", {
-            index: nextIndex,
-            question: publicQuestion(questions[nextIndex]),
-          });
+          const nextQ = questions[nextIndex];
+          if (nextQ) {
+            socket.emit("question:current", {
+              index: nextIndex,
+              question: publicQuestion(nextQ),
+            });
+          }
         }
 
         const [correctCount, wrongCount] = await redis.hmGet(pkey2, [
@@ -87,7 +100,7 @@ export function createSocketServer(httpServer) {
 
       socket.on("finish", async () => {
         const gs2 = await getGameState();
-        if (gs2.state !== "RUNNING") return;
+        if (gs2?.state !== "RUNNING") return;
 
         const token2 = String(socket.data.sessionToken);
         const pkey2 = `player:${token2}`;
@@ -96,6 +109,7 @@ export function createSocketServer(httpServer) {
         if (!p || !p.playerId) return;
         if (p.status === "DONE") return;
 
+        const questions = await getQuestionsSnapshot();
         const total = Number(gs2.totalQuestions || questions.length);
         const qIndex = Number(p.qIndex || 0);
 
@@ -108,8 +122,8 @@ export function createSocketServer(httpServer) {
         }
 
         const now = Date.now();
-        const startAt = Number(gs2.startAt || now);
-        const durationMs = Math.max(0, now - startAt);
+        const joinedAt = Number(p.joinedAt || now);
+        const durationMs = Math.max(1, now - joinedAt);
 
         await redis.hSet(pkey2, {
           status: "DONE",
@@ -118,6 +132,43 @@ export function createSocketServer(httpServer) {
         });
 
         socket.emit("finish:ack", { done: true, durationMs });
+      });
+      socket.on("player:sync", async () => {
+        const gs2 = await getGameState();
+        socket.emit(
+          "game:state",
+          gs2 || { state: "IDLE", startAt: null, totalQuestions: null }
+        );
+
+        if (gs2?.state !== "RUNNING") return;
+
+        const redis = getRedis();
+        const token2 = String(socket.data.sessionToken);
+        const pkey2 = `player:${token2}`;
+        const p = await redis.hGetAll(pkey2);
+        if (!p || !p.playerId) return;
+        if (p.status === "DONE") return;
+
+        const alreadyJoined = await redis.hGet(pkey2, "joinedAt");
+
+        if (!alreadyJoined) {
+          await redis.hSet(pkey2, {
+            status: "IN_GAME",
+            joinedAt: String(Date.now()),
+          });
+        } else {
+          await redis.hSet(pkey2, { status: "IN_GAME" });
+        }
+
+        const questions = await getQuestionsSnapshot();
+        const idx = Number(p.qIndex || 0);
+        const q = questions[idx];
+        if (!q) return;
+
+        socket.emit("question:current", {
+          index: idx,
+          question: publicQuestion(q),
+        });
       });
 
       console.log(`Socket ${socket.id} connected`);

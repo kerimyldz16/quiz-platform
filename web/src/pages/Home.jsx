@@ -8,6 +8,7 @@ import DonePending from "../components/DonePending.jsx";
 
 export default function Home() {
   const [sessionToken, setSessionToken] = useState(storage.getSessionToken());
+  const [waitingAfterFinish, setWaitingAfterFinish] = useState(false);
   const [gameState, setGameState] = useState({
     state: "IDLE",
     startAt: null,
@@ -38,6 +39,7 @@ export default function Home() {
 
     socket.on("question:current", (payload) => {
       setQuestion(payload);
+      setWaitingAfterFinish(false);
       setProgress((p) => ({ ...p, done: false }));
     });
 
@@ -51,8 +53,24 @@ export default function Home() {
 
     socket.on("finish:ack", (ack) => {
       if (ack?.done) {
+        setWaitingAfterFinish(true);
+        setQuestion(null);
         setProgress((p) => ({ ...p, done: true }));
       }
+    });
+    socket.on("session:invalidated", () => {
+      // tokenı sil
+      storage.clearSessionToken();
+      setSessionToken("");
+
+      // UI state temizle
+      setQuestion(null);
+      setProgress({ correctCount: 0, wrongCount: 0, done: false });
+      setGameState({ state: "IDLE", startAt: null, totalQuestions: null });
+      setWaitingAfterFinish(false);
+
+      // socket bağlantısını kapat
+      socket.disconnect();
     });
 
     return () => {
@@ -61,6 +79,15 @@ export default function Home() {
       socketRef.current = null;
     };
   }, [hasToken, sessionToken]);
+
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket) return;
+
+    if (gameState?.state === "RUNNING") {
+      socket.emit("player:sync");
+    }
+  }, [gameState?.state]);
 
   function onRegistered(token) {
     storage.setSessionToken(token);
@@ -106,22 +133,10 @@ export default function Home() {
   if (gameState?.state === "RUNNING") {
     return (
       <div>
-        <div
-          style={{
-            display: "flex",
-            gap: 12,
-            alignItems: "center",
-            marginBottom: 12,
-          }}
-        >
-          <button onClick={logout}>Çıkış (token sil)</button>
-          <div>
-            Doğru: <b>{progress.correctCount}</b> | Yanlış:{" "}
-            <b>{progress.wrongCount}</b>
-          </div>
-        </div>
-
-        {question ? (
+        ...
+        {waitingAfterFinish ? (
+          <DonePending title="Bitirdiniz" />
+        ) : question ? (
           <QuestionView
             payload={question}
             done={progress.done}
@@ -129,7 +144,7 @@ export default function Home() {
             onFinish={finish}
           />
         ) : (
-          <DonePending title="Soru bekleniyor (oyun başladıysa biraz sonra gelir)" />
+          <Pending title="Soru bekleniyor..." />
         )}
       </div>
     );

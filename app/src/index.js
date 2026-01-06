@@ -10,6 +10,8 @@ import { testDb } from "./db.js";
 import { initGameState } from "./gameState.js";
 import { createSocketServer } from "./socket.js";
 import { setIo } from "./socketInstance.js";
+import { adminQuestionRouter } from "./adminQuestionRoutes.js";
+import { adminUsersRouter } from "./adminUsersRoutes.js";
 
 dotenv.config();
 
@@ -34,6 +36,8 @@ app.get("/", (req, res) => {
 
 app.use(playerRouter); // /kayit
 app.use("/admin", adminRouter);
+app.use("/admin", adminUsersRouter);
+app.use("/admin", adminQuestionRouter);
 
 const server = http.createServer(app);
 

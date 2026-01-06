@@ -1,10 +1,10 @@
-let io = null;
+let ioRef = null;
 
-export function setIo(serverIo) {
-  io = serverIo;
+export function setIo(io) {
+  ioRef = io;
 }
 
 export function getIo() {
-  if (!io) throw new Error("Socket.io not initialized");
-  return io;
+  if (!ioRef) throw new Error("Socket.IO instance not set");
+  return ioRef;
 }

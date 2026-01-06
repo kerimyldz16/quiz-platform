@@ -9,3 +9,10 @@ CREATE TABLE IF NOT EXISTS players (
   finished_at TIMESTAMP NULL,
   duration_ms INT NULL
 );
+CREATE TABLE IF NOT EXISTS questions (
+  id SERIAL PRIMARY KEY,
+  text TEXT NOT NULL,
+  options JSONB NOT NULL,
+  correct TEXT NOT NULL,
+  order_index INT NOT NULL UNIQUE
+);

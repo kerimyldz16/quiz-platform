@@ -14,7 +14,14 @@ export async function persistAllPlayersToDb() {
     const wrongCount = Number(p.wrongCount || 0);
 
     const finishedAt = p.finishedAt ? new Date(Number(p.finishedAt)) : null;
-    const durationMs = p.durationMs ? Number(p.durationMs) : null;
+    let durationMs = p.durationMs ? Number(p.durationMs) : null;
+
+    if (!durationMs || durationMs <= 0) {
+      const joinedAt = Number(p.joinedAt || 0);
+      if (joinedAt > 0) {
+        durationMs = Math.max(1, Date.now() - joinedAt);
+      }
+    }
 
     await updatePlayerResult({
       playerId,
