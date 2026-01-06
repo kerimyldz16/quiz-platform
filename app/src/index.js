@@ -1,23 +1,41 @@
 import express from "express";
 import http from "http";
 import dotenv from "dotenv";
+import cors from "cors";
+
+import { adminRouter } from "./adminRoutes.js";
+import { playerRouter } from "./playerRoutes.js";
 import { connectRedis } from "./redis.js";
 import { testDb } from "./db.js";
 import { initGameState } from "./gameState.js";
-import { generateSessionToken } from "./session.js";
-import { createPlayer } from "./playerRepo.js";
-import { registerPlayer } from "./playerRegistry.js";
 import { createSocketServer } from "./socket.js";
+import { setIo } from "./socketInstance.js";
 
 dotenv.config();
 
 const app = express();
 
+const allowedOrigins = ["http://localhost:5173", "http://127.0.0.1:5173"];
+
+app.use(
+  cors({
+    origin: allowedOrigins,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: false,
+  })
+);
+
+app.use(express.json());
+
 app.get("/", (req, res) => {
   res.send("Backend running");
 });
 
-const PORT = 3000;
+app.use(playerRouter); // /kayit
+app.use("/admin", adminRouter);
+
+const server = http.createServer(app);
 
 async function bootstrap() {
   await connectRedis();
@@ -25,40 +43,12 @@ async function bootstrap() {
   await initGameState();
 
   const io = createSocketServer(server);
+  setIo(io);
 
-  app.listen(PORT, () => {
-    console.log(`App listening on port ${PORT}`);
+  const PORT = 3000;
+  server.listen(PORT, () => {
+    console.log(`HTTP + Socket server listening on ${PORT}`);
   });
 }
-
-app.use(express.json());
-
-app.post("/kayit", async (req, res) => {
-  const { firstName, lastName, phone, nickname } = req.body;
-
-  if (!firstName || !lastName || !phone || !nickname) {
-    return res.status(400).json({ error: "Missing fields" });
-  }
-
-  try {
-    const playerId = await createPlayer({
-      firstName,
-      lastName,
-      phone,
-      nickname,
-    });
-
-    const sessionToken = generateSessionToken();
-
-    await registerPlayer(sessionToken, playerId);
-
-    res.json({
-      sessionToken,
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Registration failed" });
-  }
-});
 
 bootstrap();
