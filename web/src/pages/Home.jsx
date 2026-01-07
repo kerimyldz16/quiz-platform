@@ -122,20 +122,26 @@ export default function Home() {
   if (gameState?.state === "PENDING" || gameState?.state === "IDLE") {
     return (
       <div>
-        <div style={{ marginBottom: 12 }}>
-          <button onClick={logout}>Çıkış (token sil)</button>
+        <div className="logout-btn">
+          <button className="btn-ghost" onClick={logout}>
+            Çıkış
+          </button>
         </div>
-        <Pending title="Diğer katılımcılar bekleniyor" />
+        <Pending title="Diğer katılımcılar bekleniyor..." />
       </div>
     );
   }
 
   if (gameState?.state === "RUNNING") {
     return (
-      <div>
-        ...
+      <div style={{ maxWidth: "900px", margin: "0 auto" }}>
+        <div className="logout-btn">
+          <button className="btn-ghost" onClick={logout}>
+            Çıkış
+          </button>
+        </div>
         {waitingAfterFinish ? (
-          <DonePending title="Bitirdiniz" />
+          <DonePending title="Tebrikler! Bitirdiniz." />
         ) : question ? (
           <QuestionView
             payload={question}
@@ -144,7 +150,7 @@ export default function Home() {
             onFinish={finish}
           />
         ) : (
-          <Pending title="Soru bekleniyor..." />
+          <Pending title="Soru yükleniyor..." />
         )}
       </div>
     );
@@ -153,20 +159,32 @@ export default function Home() {
   if (gameState?.state === "FINISHED") {
     return (
       <div>
-        <div style={{ marginBottom: 12 }}>
-          <button onClick={logout}>Çıkış (token sil)</button>
+        <div className="logout-btn">
+          <button className="btn-ghost" onClick={logout}>
+            Çıkış
+          </button>
         </div>
-        <div>Yarışma bitti. Sonuçlar admin panelde değerlendirilecek.</div>
+        <div
+          className="card"
+          style={{ maxWidth: "600px", margin: "0 auto", textAlign: "center" }}
+        >
+          <h3 style={{ marginBottom: "12px" }}>🎉 Yarışma Bitti</h3>
+          <p className="muted">Sonuçlar admin panelde değerlendirilecek.</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div>
-      <div style={{ marginBottom: 12 }}>
-        <button onClick={logout}>Çıkış (token sil)</button>
+      <div className="logout-btn">
+        <button className="btn-ghost" onClick={logout}>
+          Çıkış
+        </button>
       </div>
-      <div>Durum: {String(gameState?.state || "UNKNOWN")}</div>
+      <div className="card" style={{ maxWidth: "600px", margin: "0 auto" }}>
+        Durum: {String(gameState?.state || "UNKNOWN")}
+      </div>
     </div>
   );
 }

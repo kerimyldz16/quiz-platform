@@ -3,8 +3,13 @@ services:
     build:
       context: .
       dockerfile: docker/app.Dockerfile
-    env_file:
-      - .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://quiz:quiz@10.0.0.4:5432/quizdb
+      REDIS_URL: redis://10.0.0.3:6379
+      JWT_SECRET: VERY_STRONG_SECRET
+      ADMIN_USER: admin
+      ADMIN_PASS: VERY_STRONG_PASSWORD
     restart: unless-stopped
     expose:
       - "3000"
@@ -17,3 +22,5 @@ services:
       - "80:80"
     volumes:
       - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./web/dist:/usr/share/nginx/html:ro
+    restart: unless-stopped

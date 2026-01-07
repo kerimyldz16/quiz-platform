@@ -12,19 +12,16 @@ export default function QuestionView({ payload, done, onAnswer, onFinish }) {
   }
 
   return (
-    <div style={{ maxWidth: 700 }}>
-      <div style={{ marginBottom: 8 }}>
+    <div className="card question-card">
+      <div className="status-bar">
         <b>Soru {payload.index + 1}</b>
       </div>
 
       <div style={{ marginBottom: 12 }}>{q?.text}</div>
 
-      <div style={{ display: "grid", gap: 8, marginBottom: 12 }}>
+      <div className="options" style={{ marginBottom: 12 }}>
         {(q?.options || []).map((opt) => (
-          <label
-            key={opt}
-            style={{ display: "flex", gap: 8, alignItems: "center" }}
-          >
+          <label key={opt} className="option">
             <input
               type="radio"
               name="opt"
@@ -39,13 +36,15 @@ export default function QuestionView({ payload, done, onAnswer, onFinish }) {
       </div>
 
       {!done ? (
-        <button onClick={submit} disabled={!selected}>
+        <button className="btn-primary" onClick={submit} disabled={!selected}>
           Cevapla
         </button>
       ) : (
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <div>Tüm sorular cevaplandı.</div>
-          <button onClick={onFinish}>Bitir</button>
+          <button className="btn-primary" onClick={onFinish}>
+            Bitir
+          </button>
         </div>
       )}
     </div>

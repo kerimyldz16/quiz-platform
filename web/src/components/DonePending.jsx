@@ -1,8 +1,11 @@
 export default function DonePending({ title }) {
   return (
-    <div>
-      <h3>{title}</h3>
-      <div>Bitirdiniz. Diğerleri bekleniyor...</div>
+    <div className="card result-done">
+      <div className="checkmark">✓</div>
+      <div>
+        <h3>{title}</h3>
+        <div className="muted">Bitirdiniz. Diğerleri bekleniyor...</div>
+      </div>
     </div>
   );
 }

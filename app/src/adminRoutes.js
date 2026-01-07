@@ -24,11 +24,12 @@ function formatDuration(ms) {
 adminRouter.post("/login", (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password) {
-    return res.status(400).json({ error: "Missing credentials" });
+    return res.status(400).json({ error: "Eksik Kimlik Bilgileri" });
   }
 
   const token = loginAdmin({ username, password });
-  if (!token) return res.status(401).json({ error: "Invalid credentials" });
+  if (!token)
+    return res.status(401).json({ error: "Geçersiz Kimlik Bilgileri" });
 
   res.json({ token });
 });

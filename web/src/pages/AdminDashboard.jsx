@@ -10,7 +10,7 @@ function fmtMs(ms) {
   const centis = Math.floor((ms % 1000) / 10);
   return `${minutes}.${String(seconds).padStart(2, "0")}.${String(
     centis
-  ).padStart(2, "0")}dk`;
+  ).padStart(2, "0")}sn`;
 }
 
 function safeJson(val) {
@@ -24,17 +24,16 @@ function safeJson(val) {
 export default function AdminDashboard() {
   const [jwt, setJwt] = useState(storage.getAdminJwt());
   const [login, setLogin] = useState({
-    username: "admin",
-    password: "change_me",
+    username: "",
+    password: "",
   });
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
 
   const [top3, setTop3] = useState([]);
 
-  // USERS
-  const [users, setUsers] = useState([]);
-  const [usersRaw, setUsersRaw] = useState("");
+  // USERS (Solution A: count-only)
+  const [usersCount, setUsersCount] = useState(null);
 
   // QUESTIONS
   const [questions, setQuestions] = useState([]);
@@ -80,8 +79,7 @@ export default function AdminDashboard() {
     storage.clearAdminJwt();
     setJwt("");
     setTop3([]);
-    setUsers([]);
-    setUsersRaw("");
+    setUsersCount(null);
     setQuestions([]);
     setSelectedId(null);
     setMsg("Logged out");
@@ -124,14 +122,22 @@ export default function AdminDashboard() {
     }
   }
 
+  // Solution A: Only fetch count (do NOT render/keep full list)
   async function fetchUsers() {
     setErr("");
     setMsg("");
     try {
-      const data = await api.adminUsers();
-      setUsers(data.users || []);
-      setUsersRaw(safeJson(data));
-      setMsg(`Users fetched: ${(data.users || []).length}`);
+      const data = await api.adminUsers(); // backend should return { count }
+      const count = Number.isFinite(Number(data?.count))
+        ? Number(data.count)
+        : null;
+
+      setUsersCount(count);
+      setMsg(
+        count == null
+          ? "Users fetched (count not provided by backend)"
+          : `Toplam kullanıcı: ${count}`
+      );
     } catch (e2) {
       setErr(e2.message);
     }
@@ -142,10 +148,9 @@ export default function AdminDashboard() {
     setMsg("");
     if (!confirm("Tüm kullanıcılar silinecek. Emin misin?")) return;
     try {
-      const data = await api.adminUsersDeleteAll();
+      await api.adminUsersDeleteAll();
+      setUsersCount(0);
       setMsg("All users deleted");
-      setUsers([]);
-      setUsersRaw(safeJson(data));
     } catch (e2) {
       setErr(e2.message);
     }
@@ -274,9 +279,9 @@ export default function AdminDashboard() {
 
   if (!jwt) {
     return (
-      <div style={{ maxWidth: 420 }}>
+      <div className="card" style={{ maxWidth: 440 }}>
         <h3>Admin Login</h3>
-        <form onSubmit={doLogin} style={{ display: "grid", gap: 8 }}>
+        <form onSubmit={doLogin} style={{ display: "grid", gap: 12 }}>
           <input
             placeholder="Username"
             value={login.username}
@@ -292,9 +297,15 @@ export default function AdminDashboard() {
               setLogin((s) => ({ ...s, password: e.target.value }))
             }
           />
-          <button type="submit">Login</button>
-          {err ? <div style={{ color: "crimson" }}>{err}</div> : null}
-          {msg ? <div style={{ color: "green" }}>{msg}</div> : null}
+          <button
+            className="btn-primary"
+            type="submit"
+            style={{ width: "100%" }}
+          >
+            Login
+          </button>
+          {err ? <div className="msg-error">{err}</div> : null}
+          {msg ? <div className="msg-success">{msg}</div> : null}
         </form>
       </div>
     );
@@ -304,38 +315,57 @@ export default function AdminDashboard() {
     <div>
       <h3>Admin Dashboard</h3>
 
-      <div style={{ marginBottom: 12 }}>
-        <button onClick={logout}>Logout</button>
+      <div className="logout-btn">
+        <button className="btn-ghost" onClick={logout}>
+          Logout
+        </button>
       </div>
 
-      {err ? (
-        <div style={{ color: "crimson", marginBottom: 8 }}>{err}</div>
-      ) : null}
-      {msg ? (
-        <div style={{ color: "green", marginBottom: 8 }}>{msg}</div>
-      ) : null}
+      {err ? <div className="msg-error">{err}</div> : null}
+      {msg ? <div className="msg-success">{msg}</div> : null}
 
       <div
         style={{
           display: "grid",
           gridTemplateColumns: "280px 1fr 1fr",
-          gap: 16,
+          gap: 24,
         }}
       >
         {/* LEFT */}
         <div>
           <h4>Kontroller</h4>
           <div style={{ display: "grid", gap: 8 }}>
-            <button onClick={startGame}>Oyunu Başlat</button>
-            <button onClick={endGame}>Oyunu Bitir</button>
-            <button onClick={refreshTop3}>Top3 Yenile</button>
+            <button className="btn-primary" onClick={startGame}>
+              Oyunu Başlat
+            </button>
+            <button className="btn-primary" onClick={endGame}>
+              Oyunu Bitir
+            </button>
+            <button className="btn-primary" onClick={refreshTop3}>
+              Top3 Yenile
+            </button>
 
             <hr />
 
             <h4>Kullanıcılar</h4>
-            <button onClick={fetchUsers}>Kullanıcı Verilerini Çek</button>
-            <button onClick={deleteAllUsers}>Tüm Kullanıcıları Sil</button>
-            <button onClick={downloadUsersCsv}>CSV indir</button>
+            <button className="btn-ghost" onClick={fetchUsers}>
+              Kullanıcı Verilerini Çek (Count)
+            </button>
+            <button className="btn-ghost" onClick={deleteAllUsers}>
+              Tüm Kullanıcıları Sil
+            </button>
+            <button className="btn-ghost" onClick={downloadUsersCsv}>
+              CSV indir
+            </button>
+
+            <div className="card" style={{ marginTop: 12 }}>
+              <div style={{ fontSize: 12 }} className="muted">
+                Toplam kullanıcı
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 700 }}>
+                {usersCount == null ? "—" : usersCount}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -375,14 +405,15 @@ export default function AdminDashboard() {
 
           <hr style={{ margin: "16px 0" }} />
 
-          <h4>Users (raw)</h4>
-          <textarea
-            rows={10}
-            value={usersRaw}
-            onChange={(e) => setUsersRaw(e.target.value)}
-            style={{ width: "100%" }}
-            placeholder="GET /admin/users sonucu burada..."
-          />
+          <div className="card">
+            <div className="muted" style={{ fontSize: 12 }}>
+              Not
+            </div>
+            <div>
+              Kullanıcı listesi UI’da render edilmiyor (freeze önlemek için).
+              Kullanıcı verileri için CSV indir.
+            </div>
+          </div>
         </div>
 
         {/* RIGHT */}
@@ -390,7 +421,9 @@ export default function AdminDashboard() {
           <h4>Sorular (CRUD)</h4>
 
           <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-            <button onClick={listQuestions}>Soruları Yenile</button>
+            <button className="btn-ghost" onClick={listQuestions}>
+              Soruları Yenile
+            </button>
           </div>
 
           <div
@@ -417,7 +450,11 @@ export default function AdminDashboard() {
               </select>
 
               <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                <button onClick={deleteQuestion} disabled={!selectedId}>
+                <button
+                  className="btn-ghost"
+                  onClick={deleteQuestion}
+                  disabled={!selectedId}
+                >
                   Sil
                 </button>
               </div>
@@ -464,8 +501,14 @@ export default function AdminDashboard() {
                 />
 
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={createQuestion}>Ekle</button>
-                  <button onClick={updateQuestion} disabled={!selectedId}>
+                  <button className="btn-primary" onClick={createQuestion}>
+                    Ekle
+                  </button>
+                  <button
+                    className="btn-primary"
+                    onClick={updateQuestion}
+                    disabled={!selectedId}
+                  >
                     Güncelle
                   </button>
                 </div>

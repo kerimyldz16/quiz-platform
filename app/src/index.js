@@ -34,10 +34,10 @@ app.get("/", (req, res) => {
   res.send("Backend running");
 });
 
-app.use(playerRouter); // /kayit
-app.use("/admin", adminRouter);
-app.use("/admin", adminUsersRouter);
-app.use("/admin", adminQuestionRouter);
+app.use("/api", playerRouter); // /kayit
+app.use("/api/admin", adminRouter);
+app.use("/api/admin", adminUsersRouter);
+app.use("/api/admin", adminQuestionRouter);
 
 const server = http.createServer(app);
 

@@ -1,12 +1,14 @@
 import pkg from "pg";
 const { Pool } = pkg;
 
+function mustGetEnv(name) {
+  const v = process.env[name];
+  if (!v) throw new Error(`Missing env: ${name}`);
+  return v;
+}
+
 export const db = new Pool({
-  host: process.env.POSTGRES_HOST,
-  port: process.env.POSTGRES_PORT,
-  user: process.env.POSTGRES_USER,
-  password: process.env.POSTGRES_PASSWORD,
-  database: process.env.POSTGRES_DB,
+  connectionString: mustGetEnv("DATABASE_URL"),
 });
 
 export async function testDb() {
