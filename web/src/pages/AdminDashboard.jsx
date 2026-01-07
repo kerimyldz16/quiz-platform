@@ -404,16 +404,6 @@ export default function AdminDashboard() {
           </table>
 
           <hr style={{ margin: "16px 0" }} />
-
-          <div className="card">
-            <div className="muted" style={{ fontSize: 12 }}>
-              Not
-            </div>
-            <div>
-              Kullanıcı listesi UI’da render edilmiyor (freeze önlemek için).
-              Kullanıcı verileri için CSV indir.
-            </div>
-          </div>
         </div>
 
         {/* RIGHT */}
