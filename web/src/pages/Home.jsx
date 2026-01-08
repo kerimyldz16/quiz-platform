@@ -183,18 +183,46 @@ function AnswerSummary({ answers }) {
   if (!answers?.length) return null;
 
   return (
-    <div className="card" style={{ marginTop: 16 }}>
-      <h4>Cevap Özeti</h4>
-      <ul>
-        {answers.map((a, i) => (
-          <li key={i}>
-            <b>{a.question}</b>
-            <br />
-            Senin cevabın: {a.given} —{" "}
-            {a.isCorrect ? "✅ Doğru" : `❌ Yanlış (Doğru: ${a.correct})`}
-          </li>
-        ))}
-      </ul>
+    <div className="answer-summary-container">
+      <div className="answer-summary-card">
+        <div className="summary-header">
+          <h4 className="summary-title">Cevap Özeti</h4>
+          <span className="summary-badge">{answers.length} Soru</span>
+        </div>
+
+        <div className="summary-items">
+          {answers.map((a, i) => (
+            <div
+              key={i}
+              className={`summary-item ${
+                a.isCorrect ? "correct" : "incorrect"
+              }`}
+            >
+              <div className="item-number">{i + 1}</div>
+              <div className="item-content">
+                <div className="item-question">{a.question}</div>
+                <div className="item-details">
+                  <span className="label-given">Cevabın:</span>
+                  <span className="value-given">{a.given}</span>
+                  {!a.isCorrect && (
+                    <>
+                      <span className="label-correct">Doğrusu:</span>
+                      <span className="value-correct">{a.correct}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+              <div
+                className={`item-icon ${
+                  a.isCorrect ? "correct-icon" : "incorrect-icon"
+                }`}
+              >
+                {a.isCorrect ? "✓" : "✕"}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

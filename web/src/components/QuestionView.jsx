@@ -10,25 +10,49 @@ export default function QuestionView({ payload, onAnswer }) {
   }
 
   return (
-    <div className="card question-card">
-      <b>Soru {payload.index + 1}</b>
+    <div className="question-card-container">
+      <div className="question-card">
+        {/* Question Header */}
+        <div className="question-header">
+          <div className="question-number">
+            <span className="badge">{payload.index + 1}</span>
+          </div>
+          <div className="question-progress">
+            <span className="question-text">{q?.text}</span>
+          </div>
+        </div>
 
-      <div style={{ marginBottom: 12 }}>{q?.text}</div>
+        {/* Options Grid */}
+        <div className="options-grid">
+          {(q?.options || []).map((opt, idx) => (
+            <label key={opt} className="option-label">
+              <input
+                type="radio"
+                name="question-option"
+                checked={selected === opt}
+                onChange={() => setSelected(opt)}
+                className="option-input"
+              />
+              <div className="option-box">
+                <div className="option-letter">
+                  {String.fromCharCode(65 + idx)}
+                </div>
+                <div className="option-text">{opt}</div>
+              </div>
+            </label>
+          ))}
+        </div>
 
-      {(q?.options || []).map((opt) => (
-        <label key={opt}>
-          <input
-            type="radio"
-            checked={selected === opt}
-            onChange={() => setSelected(opt)}
-          />
-          {opt}
-        </label>
-      ))}
-
-      <button className="btn-primary" onClick={submit} disabled={!selected}>
-        Cevapla
-      </button>
+        {/* Submit Button */}
+        <button
+          className="btn-primary btn-submit"
+          onClick={submit}
+          disabled={!selected}
+        >
+          <span>Cevapla</span>
+          <span className="submit-icon">→</span>
+        </button>
+      </div>
     </div>
   );
 }
