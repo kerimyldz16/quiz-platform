@@ -1,8 +1,7 @@
 import { useState } from "react";
 
-export default function QuestionView({ payload, done, onAnswer, onFinish }) {
+export default function QuestionView({ payload, onAnswer }) {
   const [selected, setSelected] = useState("");
-
   const q = payload?.question;
 
   async function submit() {
@@ -13,40 +12,24 @@ export default function QuestionView({ payload, done, onAnswer, onFinish }) {
 
   return (
     <div className="card question-card">
-      <div className="status-bar">
-        <b>Soru {payload.index + 1}</b>
-      </div>
+      <b>Soru {payload.index + 1}</b>
 
       <div style={{ marginBottom: 12 }}>{q?.text}</div>
 
-      <div className="options" style={{ marginBottom: 12 }}>
-        {(q?.options || []).map((opt) => (
-          <label key={opt} className="option">
-            <input
-              type="radio"
-              name="opt"
-              value={opt}
-              checked={selected === opt}
-              onChange={() => setSelected(opt)}
-              disabled={done}
-            />
-            <span>{opt}</span>
-          </label>
-        ))}
-      </div>
+      {(q?.options || []).map((opt) => (
+        <label key={opt}>
+          <input
+            type="radio"
+            checked={selected === opt}
+            onChange={() => setSelected(opt)}
+          />
+          {opt}
+        </label>
+      ))}
 
-      {!done ? (
-        <button className="btn-primary" onClick={submit} disabled={!selected}>
-          Cevapla
-        </button>
-      ) : (
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <div>Tüm sorular cevaplandı.</div>
-          <button className="btn-primary" onClick={onFinish}>
-            Bitir
-          </button>
-        </div>
-      )}
+      <button className="btn-primary" onClick={submit} disabled={!selected}>
+        Cevapla
+      </button>
     </div>
   );
 }

@@ -9,6 +9,15 @@ function publicQuestion(q) {
   return { id: q.id, text: q.text, options: q.options };
 }
 
+async function getAnswerSummary(redis, pkey) {
+  try {
+    const raw = await redis.lRange(`${pkey}:answers`, 0, -1);
+    return raw.map((x) => JSON.parse(x));
+  } catch {
+    return [];
+  }
+}
+
 export function createSocketServer(httpServer) {
   const io = new Server(httpServer, { cors: { origin: "*" } });
 
@@ -32,19 +41,30 @@ export function createSocketServer(httpServer) {
       const pkey = `player:${token}`;
       const player = await redis.hGetAll(pkey);
 
-      // If running and player not done -> send current question
-      if (gs?.state === "RUNNING" && player?.status !== "DONE") {
-        await redis.hSet(pkey, { status: "IN_GAME" });
+      // If player already DONE, tell client immediately (fix refresh -> pending)
+      if (player?.status === "DONE") {
+        const answers = await getAnswerSummary(redis, pkey);
+        socket.emit("player:done", {
+          correctCount: Number(player.correctCount || 0),
+          wrongCount: Number(player.wrongCount || 0),
+          durationMs: Number(player.durationMs || 0),
+          answers,
+        });
+      } else {
+        // If running and player not done -> send current question
+        if (gs?.state === "RUNNING") {
+          await redis.hSet(pkey, { status: "IN_GAME" });
 
-        const questions = await getQuestionsSnapshot();
-        const idx = Number(player.qIndex || 0);
-        const q = questions[idx];
+          const questions = await getQuestionsSnapshot();
+          const idx = Number(player.qIndex || 0);
+          const q = questions[idx];
 
-        if (q) {
-          socket.emit("question:current", {
-            index: idx,
-            question: publicQuestion(q),
-          });
+          if (q) {
+            socket.emit("question:current", {
+              index: idx,
+              question: publicQuestion(q),
+            });
+          }
         }
       }
 
@@ -56,8 +76,7 @@ export function createSocketServer(httpServer) {
         const pkey2 = `player:${token2}`;
         const p = await redis.hGetAll(pkey2);
 
-        if (!p || !p.playerId) return;
-        if (p.status === "DONE") return;
+        if (!p || !p.playerId || p.status === "DONE") return;
 
         const questions = await getQuestionsSnapshot();
         const total = Number(gs2.totalQuestions || questions.length);
@@ -68,6 +87,18 @@ export function createSocketServer(httpServer) {
 
         const isCorrect = String(answer) === String(q.correct);
 
+        // answer log
+        await redis.rPush(
+          `${pkey2}:answers`,
+          JSON.stringify({
+            index: idx,
+            question: q.text,
+            given: answer,
+            correct: q.correct,
+            isCorrect,
+          })
+        );
+
         if (isCorrect) await redis.hIncrBy(pkey2, "correctCount", 1);
         else await redis.hIncrBy(pkey2, "wrongCount", 1);
 
@@ -75,15 +106,46 @@ export function createSocketServer(httpServer) {
 
         const nextIndex = idx + 1;
 
-        if (nextIndex < total) {
-          const nextQ = questions[nextIndex];
-          if (nextQ) {
-            socket.emit("question:current", {
-              index: nextIndex,
-              question: publicQuestion(nextQ),
-            });
-          }
+        // SON SORU İSE → OTOMATİK FINISH
+        if (nextIndex >= total) {
+          const now = Date.now();
+          const joinedAt = Number(p.joinedAt || now);
+          const durationMs = Math.max(1, now - joinedAt);
+
+          await redis.hSet(pkey2, {
+            status: "DONE",
+            finishedAt: String(now),
+            durationMs: String(durationMs),
+          });
+
+          const answers = await getAnswerSummary(redis, pkey2);
+
+          // finish:ack (mevcut Home.jsx buna bakıyor)
+          socket.emit("finish:ack", {
+            done: true,
+            durationMs,
+            answers,
+          });
+
+          // ayrıca player:done da gönderelim (refresh sonrası aynı akış)
+          socket.emit("player:done", {
+            correctCount: Number(
+              (await redis.hGet(pkey2, "correctCount")) || 0
+            ),
+            wrongCount: Number((await redis.hGet(pkey2, "wrongCount")) || 0),
+            durationMs,
+            answers,
+          });
+
+          return;
         }
+
+        // normal akış
+        const nextQ = questions[nextIndex];
+        socket.emit("question:current", {
+          index: nextIndex,
+          question: publicQuestion(nextQ),
+        });
 
         const [correctCount, wrongCount] = await redis.hmGet(pkey2, [
           "correctCount",
@@ -94,10 +156,11 @@ export function createSocketServer(httpServer) {
           correct: isCorrect,
           correctCount: Number(correctCount || 0),
           wrongCount: Number(wrongCount || 0),
-          done: nextIndex >= total,
+          done: false,
         });
       });
 
+      // Artık gerek yok ama geriye uyumluluk için bırakıldı
       socket.on("finish", async () => {
         const gs2 = await getGameState();
         if (gs2?.state !== "RUNNING") return;
@@ -107,7 +170,17 @@ export function createSocketServer(httpServer) {
         const p = await redis.hGetAll(pkey2);
 
         if (!p || !p.playerId) return;
-        if (p.status === "DONE") return;
+
+        if (p.status === "DONE") {
+          const answers = await getAnswerSummary(redis, pkey2);
+          socket.emit("player:done", {
+            correctCount: Number(p.correctCount || 0),
+            wrongCount: Number(p.wrongCount || 0),
+            durationMs: Number(p.durationMs || 0),
+            answers,
+          });
+          return;
+        }
 
         const questions = await getQuestionsSnapshot();
         const total = Number(gs2.totalQuestions || questions.length);
@@ -131,8 +204,17 @@ export function createSocketServer(httpServer) {
           durationMs: String(durationMs),
         });
 
-        socket.emit("finish:ack", { done: true, durationMs });
+        const answers = await getAnswerSummary(redis, pkey2);
+
+        socket.emit("finish:ack", { done: true, durationMs, answers });
+        socket.emit("player:done", {
+          correctCount: Number((await redis.hGet(pkey2, "correctCount")) || 0),
+          wrongCount: Number((await redis.hGet(pkey2, "wrongCount")) || 0),
+          durationMs,
+          answers,
+        });
       });
+
       socket.on("player:sync", async () => {
         const gs2 = await getGameState();
         socket.emit(
@@ -140,17 +222,27 @@ export function createSocketServer(httpServer) {
           gs2 || { state: "IDLE", startAt: null, totalQuestions: null }
         );
 
-        if (gs2?.state !== "RUNNING") return;
-
-        const redis = getRedis();
         const token2 = String(socket.data.sessionToken);
         const pkey2 = `player:${token2}`;
         const p = await redis.hGetAll(pkey2);
         if (!p || !p.playerId) return;
-        if (p.status === "DONE") return;
+
+        // ✅ DONE ise pending'e düşürme: DONE bilgisini geri gönder
+        if (p.status === "DONE") {
+          const answers = await getAnswerSummary(redis, pkey2);
+          socket.emit("player:done", {
+            correctCount: Number(p.correctCount || 0),
+            wrongCount: Number(p.wrongCount || 0),
+            durationMs: Number(p.durationMs || 0),
+            answers,
+          });
+          return;
+        }
+
+        // RUNNING değilse soru gönderme
+        if (gs2?.state !== "RUNNING") return;
 
         const alreadyJoined = await redis.hGet(pkey2, "joinedAt");
-
         if (!alreadyJoined) {
           await redis.hSet(pkey2, {
             status: "IN_GAME",

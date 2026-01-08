@@ -8,30 +8,31 @@ import DonePending from "../components/DonePending.jsx";
 
 export default function Home() {
   const [sessionToken, setSessionToken] = useState(storage.getSessionToken());
-  const [waitingAfterFinish, setWaitingAfterFinish] = useState(false);
   const [gameState, setGameState] = useState({
     state: "IDLE",
     startAt: null,
     totalQuestions: null,
   });
-  const [question, setQuestion] = useState(null); // {index, question:{id,text,options}}
+
+  const [question, setQuestion] = useState(null);
+  const [waitingAfterFinish, setWaitingAfterFinish] = useState(false);
+  const [answersSummary, setAnswersSummary] = useState([]);
+
   const [progress, setProgress] = useState({
     correctCount: 0,
     wrongCount: 0,
     done: false,
   });
-  const socketRef = useRef(null);
 
+  const socketRef = useRef(null);
   const hasToken = useMemo(() => !!sessionToken, [sessionToken]);
 
+  /* SOCKET BOOTSTRAP */
   useEffect(() => {
     if (!hasToken) return;
 
     const socket = connectPlayerSocket(sessionToken);
     socketRef.current = socket;
-
-    socket.on("connect", () => {});
-    socket.on("disconnect", () => {});
 
     socket.on("game:state", (gs) => {
       setGameState(gs || { state: "IDLE" });
@@ -52,24 +53,34 @@ export default function Home() {
     });
 
     socket.on("finish:ack", (ack) => {
-      if (ack?.done) {
-        setWaitingAfterFinish(true);
-        setQuestion(null);
-        setProgress((p) => ({ ...p, done: true }));
-      }
+      if (!ack?.done) return;
+
+      setWaitingAfterFinish(true);
+      setQuestion(null);
+      setProgress((p) => ({ ...p, done: true }));
+      setAnswersSummary(ack.answers || []);
     });
+
+    // 🔑 SAYFA YENİLENİNCE DONE KALMASINI SAĞLAYAN KISIM
+    socket.on("player:done", (payload) => {
+      setWaitingAfterFinish(true);
+      setQuestion(null);
+      setProgress({
+        correctCount: payload.correctCount,
+        wrongCount: payload.wrongCount,
+        done: true,
+      });
+      setAnswersSummary(payload.answers || []);
+    });
+
     socket.on("session:invalidated", () => {
-      // tokenı sil
       storage.clearSessionToken();
       setSessionToken("");
-
-      // UI state temizle
       setQuestion(null);
-      setProgress({ correctCount: 0, wrongCount: 0, done: false });
-      setGameState({ state: "IDLE", startAt: null, totalQuestions: null });
       setWaitingAfterFinish(false);
-
-      // socket bağlantısını kapat
+      setAnswersSummary([]);
+      setProgress({ correctCount: 0, wrongCount: 0, done: false });
+      setGameState({ state: "IDLE" });
       socket.disconnect();
     });
 
@@ -80,14 +91,12 @@ export default function Home() {
     };
   }, [hasToken, sessionToken]);
 
+  /* HER STATE DEĞİŞİMİNDE SYNC */
   useEffect(() => {
     const socket = socketRef.current;
     if (!socket) return;
-
-    if (gameState?.state === "RUNNING") {
-      socket.emit("player:sync");
-    }
-  }, [gameState?.state]);
+    socket.emit("player:sync");
+  }, [gameState.state]);
 
   function onRegistered(token) {
     storage.setSessionToken(token);
@@ -98,56 +107,46 @@ export default function Home() {
     storage.clearSessionToken();
     setSessionToken("");
     setQuestion(null);
+    setWaitingAfterFinish(false);
+    setAnswersSummary([]);
     setProgress({ correctCount: 0, wrongCount: 0, done: false });
-    setGameState({ state: "IDLE", startAt: null, totalQuestions: null });
+    setGameState({ state: "IDLE" });
   }
 
   async function submitAnswer(answer) {
-    const socket = socketRef.current;
-    if (!socket) return;
-    socket.emit("answer", { answer });
+    socketRef.current?.emit("answer", { answer });
   }
 
-  async function finish() {
-    const socket = socketRef.current;
-    if (!socket) return;
-    socket.emit("finish");
-  }
+  /* UI */
 
-  // UI karar ağacı
   if (!hasToken) {
     return <RegisterForm onRegistered={onRegistered} />;
   }
 
-  if (gameState?.state === "PENDING" || gameState?.state === "IDLE") {
+  if (gameState.state === "IDLE" || gameState.state === "PENDING") {
     return (
-      <div>
-        <div className="logout-btn">
-          <button className="btn-ghost" onClick={logout}>
-            Çıkış
-          </button>
-        </div>
+      <>
+        <Logout onClick={logout} />
         <Pending title="Diğer katılımcılar bekleniyor..." />
-      </div>
+      </>
     );
   }
 
-  if (gameState?.state === "RUNNING") {
+  if (gameState.state === "RUNNING") {
     return (
-      <div style={{ maxWidth: "900px", margin: "0 auto" }}>
-        <div className="logout-btn">
-          <button className="btn-ghost" onClick={logout}>
-            Çıkış
-          </button>
-        </div>
+      <div style={{ maxWidth: 900, margin: "0 auto" }}>
+        <Logout onClick={logout} />
+
         {waitingAfterFinish ? (
-          <DonePending title="Tebrikler! Bitirdiniz." />
+          <>
+            <DonePending title="Tebrikler! Bitirdiniz." />
+            <AnswerSummary answers={answersSummary} />
+          </>
         ) : question ? (
           <QuestionView
             payload={question}
             done={progress.done}
             onAnswer={submitAnswer}
-            onFinish={finish}
           />
         ) : (
           <Pending title="Soru yükleniyor..." />
@@ -156,35 +155,46 @@ export default function Home() {
     );
   }
 
-  if (gameState?.state === "FINISHED") {
+  if (gameState.state === "FINISHED") {
     return (
-      <div>
-        <div className="logout-btn">
-          <button className="btn-ghost" onClick={logout}>
-            Çıkış
-          </button>
-        </div>
-        <div
-          className="card"
-          style={{ maxWidth: "600px", margin: "0 auto", textAlign: "center" }}
-        >
-          <h3 style={{ marginBottom: "12px" }}>🎉 Yarışma Bitti</h3>
-          <p className="muted">Sonuçlar admin panelde değerlendirilecek.</p>
-        </div>
-      </div>
+      <>
+        <Logout onClick={logout} />
+        <DonePending title="Yarışma sona erdi." />
+      </>
     );
   }
 
+  return null;
+}
+
+/* UI Helpers */
+
+function Logout({ onClick }) {
   return (
-    <div>
-      <div className="logout-btn">
-        <button className="btn-ghost" onClick={logout}>
-          Çıkış
-        </button>
-      </div>
-      <div className="card" style={{ maxWidth: "600px", margin: "0 auto" }}>
-        Durum: {String(gameState?.state || "UNKNOWN")}
-      </div>
+    <div className="logout-btn">
+      <button className="btn-ghost" onClick={onClick}>
+        Çıkış
+      </button>
+    </div>
+  );
+}
+
+function AnswerSummary({ answers }) {
+  if (!answers?.length) return null;
+
+  return (
+    <div className="card" style={{ marginTop: 16 }}>
+      <h4>Cevap Özeti</h4>
+      <ul>
+        {answers.map((a, i) => (
+          <li key={i}>
+            <b>{a.question}</b>
+            <br />
+            Senin cevabın: {a.given} —{" "}
+            {a.isCorrect ? "✅ Doğru" : `❌ Yanlış (Doğru: ${a.correct})`}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

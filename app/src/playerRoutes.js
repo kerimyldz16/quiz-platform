@@ -15,7 +15,7 @@ playerRouter.post("/kayit", async (req, res) => {
 
   try {
     const gs = await getGameState();
-    if (gs.state === "RUNNING" || gs.state === "FINISHED") {
+    if (gs.state === "FINISHED") {
       return res.status(400).json({ error: "Registration is closed" });
     }
 
