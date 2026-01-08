@@ -1,14 +1,14 @@
 import express from "express";
 import { requireAdmin } from "./adminAuth.js";
-import { listUsers, deleteAllUsers } from "./adminUserRepo.js";
+import { listUsersCount, deleteAllUsers } from "./adminUserRepo.js";
 import { getGameState } from "./gameLifecycle.js";
 import { getRedis } from "./redis.js";
 
 export const adminUsersRouter = express.Router();
 
 adminUsersRouter.get("/users", requireAdmin, async (req, res) => {
-  const users = await listUsers();
-  res.json({ users });
+  const count = await listUsersCount();
+  res.json({ count });
 });
 
 adminUsersRouter.delete("/users", requireAdmin, async (req, res) => {
@@ -19,7 +19,6 @@ adminUsersRouter.delete("/users", requireAdmin, async (req, res) => {
 
   await deleteAllUsers();
 
-  // Redis tarafını da temizle (dev için)
   const redis = getRedis();
   await redis.multi().del("players:active").exec();
 

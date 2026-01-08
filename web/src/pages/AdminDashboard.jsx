@@ -134,9 +134,7 @@ export default function AdminDashboard() {
 
       setUsersCount(count);
       setMsg(
-        count == null
-          ? "Users fetched (count not provided by backend)"
-          : `Toplam kullanıcı: ${count}`
+        count == null ? "Kullanıcılar çekildi." : `Toplam kullanıcı: ${count}`
       );
     } catch (e2) {
       setErr(e2.message);
@@ -302,7 +300,7 @@ export default function AdminDashboard() {
             type="submit"
             style={{ width: "100%" }}
           >
-            Login
+            Oturum Aç
           </button>
           {err ? <div className="msg-error">{err}</div> : null}
           {msg ? <div className="msg-success">{msg}</div> : null}
@@ -317,7 +315,7 @@ export default function AdminDashboard() {
 
       <div className="logout-btn">
         <button className="btn-ghost" onClick={logout}>
-          Logout
+          Oturumu Kapat
         </button>
       </div>
 

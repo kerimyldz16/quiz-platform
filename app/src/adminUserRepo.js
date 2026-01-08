@@ -1,14 +1,9 @@
 import { db } from "./db.js";
 
-export async function listUsers() {
-  const q = `
-    SELECT id, first_name, last_name, phone, created_at,
-           correct_count, wrong_count, finished_at, duration_ms
-    FROM players
-    ORDER BY created_at DESC
-  `;
+export async function listUsersCount() {
+  const q = `SELECT COUNT(*)::int AS count FROM players`;
   const r = await db.query(q);
-  return r.rows;
+  return r.rows[0].count;
 }
 
 export async function deleteAllUsers() {
