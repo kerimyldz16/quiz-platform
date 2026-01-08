@@ -379,6 +379,7 @@ export default function AdminDashboard() {
               <tr>
                 <th>#</th>
                 <th>Ad Soyad</th>
+                <th>Takma Ad</th>
                 <th>Telefon</th>
                 <th>Süre</th>
               </tr>
@@ -389,6 +390,7 @@ export default function AdminDashboard() {
                   <tr key={x.rank}>
                     <td>{x.rank}</td>
                     <td>{`${x.firstName ?? ""} ${x.lastName ?? ""}`.trim()}</td>
+                    <td>{x.nickName ?? ""}</td>
                     <td>{x.phone ?? ""}</td>
                     <td>{x.durationText || fmtMs(x.durationMs)}</td>
                   </tr>

@@ -7,9 +7,9 @@ import { setPendingIfIdle, getGameState } from "./gameLifecycle.js";
 export const playerRouter = express.Router();
 
 playerRouter.post("/kayit", async (req, res) => {
-  const { firstName, lastName, phone } = req.body;
+  const { firstName, lastName, nickName, phone } = req.body;
 
-  if (!firstName || !lastName || !phone) {
+  if (!firstName || !lastName || !nickName || !phone) {
     return res.status(400).json({ error: "Missing fields" });
   }
 
@@ -19,7 +19,12 @@ playerRouter.post("/kayit", async (req, res) => {
       return res.status(400).json({ error: "Registration is closed" });
     }
 
-    const playerId = await createPlayer({ firstName, lastName, phone });
+    const playerId = await createPlayer({
+      firstName,
+      lastName,
+      nickName,
+      phone,
+    });
 
     const sessionToken = generateSessionToken();
     await registerPlayer(sessionToken, playerId);

@@ -1,5 +1,4 @@
 import { useState } from "react";
-
 export default function QuestionView({ payload, onAnswer }) {
   const [selected, setSelected] = useState("");
   const q = payload?.question;

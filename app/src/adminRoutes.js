@@ -64,6 +64,7 @@ adminRouter.post("/end", requireAdmin, async (req, res) => {
         rank: i + 1,
         firstName: p?.first_name || null,
         lastName: p?.last_name || null,
+        nickName: p?.nick_name || null,
         phone: p?.phone || null,
         durationMs: x.durationMs,
         durationText: formatDuration(x.durationMs),
@@ -107,7 +108,7 @@ adminRouter.get("/top3", requireAdmin, async (req, res) => {
     // Top3: tüm soruları doğru + en hızlı 3
     const r = await db.query(
       `
-      SELECT first_name, last_name, phone, duration_ms
+      SELECT first_name, last_name, nick_name, phone, duration_ms
       FROM players
       WHERE wrong_count = 0
         AND correct_count = $1
@@ -123,6 +124,7 @@ adminRouter.get("/top3", requireAdmin, async (req, res) => {
       rank: i + 1,
       firstName: p.first_name,
       lastName: p.last_name,
+      nickName: p.nick_name,
       phone: p.phone,
       durationMs: p.duration_ms,
     }));
@@ -140,7 +142,7 @@ adminRouter.get("/users.csv", requireAdmin, async (req, res) => {
     res.setHeader("Cache-Control", "no-store");
 
     const r = await db.query(`
-      SELECT first_name, last_name, phone,
+      SELECT first_name, last_name, nick_name, phone,
              correct_count, wrong_count, duration_ms,
              created_at, finished_at
       FROM players
@@ -158,6 +160,7 @@ adminRouter.get("/users.csv", requireAdmin, async (req, res) => {
     const header = [
       "first_name",
       "last_name",
+      "nick_name",
       "phone",
       "correct_count",
       "wrong_count",
@@ -170,6 +173,7 @@ adminRouter.get("/users.csv", requireAdmin, async (req, res) => {
       [
         esc(row.first_name),
         esc(row.last_name),
+        esc(row.nick_name),
         esc(row.phone),
         esc(row.correct_count),
         esc(row.wrong_count),

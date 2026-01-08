@@ -4,6 +4,7 @@ import { api } from "../lib/api.jsx";
 export default function RegisterForm({ onRegistered }) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [nickName, setNickName] = useState("");
   const [phone, setPhone] = useState("");
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
@@ -13,7 +14,7 @@ export default function RegisterForm({ onRegistered }) {
     setErr("");
     setLoading(true);
     try {
-      const data = await api.register({ firstName, lastName, phone });
+      const data = await api.register({ firstName, lastName, nickName, phone });
       onRegistered(data.sessionToken);
     } catch (e2) {
       setErr(e2.message || "Registration failed");
@@ -36,6 +37,11 @@ export default function RegisterForm({ onRegistered }) {
             placeholder="Soyad"
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
+          />
+          <input
+            placeholder="Takma Ad"
+            value={nickName}
+            onChange={(e) => setNickName(e.target.value)}
           />
           <input
             placeholder="Telefon"
