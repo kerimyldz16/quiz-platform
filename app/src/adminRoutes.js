@@ -70,22 +70,16 @@ adminRouter.post("/end", requireAdmin, async (req, res) => {
         durationText: formatDuration(x.durationMs),
       };
     });
-    const redis = getRedis();
-    const activeTokens = await redis.sMembers("players:active");
 
-    // <<< KRİTİK: reset
-    await resetGame();
+    const payload = { state: "FINISHED", top3 };
 
-    res.json({ state: "IDLE", top3 });
+    res.json(payload);
+
     const io = getIo();
-
-    // Tüm player client'lara "session invalid" de
-    io.to("PLAYERS").emit("session:invalidated");
-    const sockets = await io.in("PLAYERS").fetchSockets();
-    for (const s of sockets) {
-      s.disconnect(true);
-    }
+    io.to("PLAYERS").emit("game:state", payload);
+    io.to("PLAYERS").emit("game:finished", payload);
   } catch (err) {
+    console.error("END_GAME_ERROR:", err);
     res.status(400).json({ error: err.message });
   }
 });
