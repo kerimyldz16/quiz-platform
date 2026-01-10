@@ -19,12 +19,22 @@ export default function RegisterForm({ onRegistered }) {
       return;
     }
 
+    if (!phone || phone.length < 10) {
+      setErr("Geçerli bir telefon numarası giriniz.");
+      return;
+    }
+
+    if (!/^[0-9]+$/.test(phone)) {
+      setErr("Telefon numarası yalnızca rakamlardan oluşmalıdır.");
+      return;
+    }
+
     setLoading(true);
     try {
       const data = await api.register({ firstName, lastName, nickName, phone });
       onRegistered(data.sessionToken);
     } catch (e2) {
-      setErr(e2.message || "Registration failed");
+      setErr(e2.message || "Kayıt sırasında bir hata oluştu.");
     } finally {
       setLoading(false);
     }
@@ -41,7 +51,7 @@ export default function RegisterForm({ onRegistered }) {
           />
         </div>
 
-        <h2 className="register-title">Katıl</h2>
+        <h2 className="register-title">İletişim Bilgileri</h2>
 
         <form onSubmit={submit} style={{ display: "grid", gap: 10 }}>
           <input
@@ -65,7 +75,13 @@ export default function RegisterForm({ onRegistered }) {
           <input
             placeholder="Telefon"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={11}
+            onChange={(e) => {
+              const onlyDigits = e.target.value.replace(/\D/g, "");
+              setPhone(onlyDigits);
+            }}
             style={{ padding: "10px 12px" }}
           />
 

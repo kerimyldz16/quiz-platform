@@ -4,7 +4,7 @@ export default function DonePending({ title }) {
       <div className="checkmark">✓</div>
       <div>
         <h3>{title}</h3>
-        <div className="muted">Bitirdiniz. Diğerleri bekleniyor...</div>
+        <div className="muted">Bitirdiniz.</div>
       </div>
     </div>
   );

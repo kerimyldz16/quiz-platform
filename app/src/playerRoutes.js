@@ -35,10 +35,10 @@ playerRouter.post("/kayit", async (req, res) => {
   } catch (err) {
     // Postgres unique violation (phone)
     if (err?.code === "23505") {
-      return res.status(400).json({ error: "Phone already registered" });
+      return res.status(400).json({ error: "Telefon numarası zaten kayıtlı" });
     }
 
     console.error("Register error:", err);
-    res.status(500).json({ error: "Registration failed" });
+    res.status(500).json({ error: "Kayıt sırasında bir hata oluştu." });
   }
 });

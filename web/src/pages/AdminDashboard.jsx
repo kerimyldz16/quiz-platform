@@ -69,9 +69,9 @@ export default function AdminDashboard() {
       const data = await api.adminLogin(login);
       storage.setAdminJwt(data.token);
       setJwt(data.token);
-      setMsg("Login OK");
+      setMsg("Giriş başarılı");
     } catch (e2) {
-      setErr(e2.message || "Login failed");
+      setErr(e2.message || "Giriş başarısız");
     }
   }
 
@@ -82,7 +82,7 @@ export default function AdminDashboard() {
     setUsersCount(null);
     setQuestions([]);
     setSelectedId(null);
-    setMsg("Logged out");
+    setMsg("Çıkış yapıldı");
     setErr("");
   }
 
@@ -104,7 +104,7 @@ export default function AdminDashboard() {
     setMsg("");
     try {
       const data = await api.adminEnd();
-      setMsg("Game ended. DB persist done.");
+      setMsg("Oyun bitti. Veritabanına kaydedildi.");
       if (data?.top3) setTop3(data.top3);
     } catch (e2) {
       setErr(e2.message);
@@ -148,7 +148,7 @@ export default function AdminDashboard() {
     try {
       await api.adminUsersDeleteAll();
       setUsersCount(0);
-      setMsg("All users deleted");
+      setMsg("Tüm kullanıcılar silindi");
     } catch (e2) {
       setErr(e2.message);
     }
@@ -164,7 +164,7 @@ export default function AdminDashboard() {
       cache: "no-store",
     })
       .then(async (r) => {
-        if (!r.ok) throw new Error(`CSV download failed (${r.status})`);
+        if (!r.ok) throw new Error(`CSV indirme başarısız (${r.status})`);
         const blob = await r.blob();
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
@@ -184,7 +184,7 @@ export default function AdminDashboard() {
       const qs = data.questions || [];
       setQuestions(qs);
       setSelectedId(qs[0]?.id ?? null);
-      setMsg(`Questions fetched: ${qs.length}`);
+      setMsg(`Sorular çekildi: ${qs.length}`);
     } catch (e2) {
       setErr(e2.message);
     }
@@ -220,7 +220,7 @@ export default function AdminDashboard() {
       };
 
       const data = await api.adminQuestionsCreate(payload);
-      setMsg(`Question created. id=${data.id}`);
+      setMsg(`Soru Oluşturuldu. id=${data.id}`);
       await listQuestions();
       setSelectedId(data.id);
     } catch (e2) {
@@ -246,7 +246,7 @@ export default function AdminDashboard() {
       };
 
       await api.adminQuestionsUpdate(selectedId, payload);
-      setMsg("Question updated");
+      setMsg("Soru güncellendi");
       await listQuestions();
       setSelectedId(selectedId);
     } catch (e2) {
@@ -261,7 +261,7 @@ export default function AdminDashboard() {
     if (!confirm("Bu soru silinecek. Emin misin?")) return;
     try {
       await api.adminQuestionsDelete(selectedId);
-      setMsg("Question deleted");
+      setMsg("Soru silindi");
       setSelectedId(null);
       await listQuestions();
     } catch (e2) {

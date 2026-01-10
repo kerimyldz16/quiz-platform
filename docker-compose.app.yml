@@ -7,9 +7,9 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://quiz:quiz@10.0.0.4:5432/quizdb
       REDIS_URL: redis://10.0.0.3:6379
-      JWT_SECRET: VERY_STRONG_SECRET
+      ADMIN_JWT_SECRET: Borusannext2026
       ADMIN_USER: admin
-      ADMIN_PASS: VERY_STRONG_PASSWORD
+      ADMIN_PASS: borusannextyarisma2026
     restart: unless-stopped
     expose:
       - "3000"

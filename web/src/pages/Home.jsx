@@ -61,7 +61,6 @@ export default function Home() {
       setAnswersSummary(ack.answers || []);
     });
 
-    // 🔑 SAYFA YENİLENİNCE DONE KALMASINI SAĞLAYAN KISIM
     socket.on("player:done", (payload) => {
       setWaitingAfterFinish(true);
       setQuestion(null);
@@ -91,7 +90,6 @@ export default function Home() {
     };
   }, [hasToken, sessionToken]);
 
-  /* HER STATE DEĞİŞİMİNDE SYNC */
   useEffect(() => {
     const socket = socketRef.current;
     if (!socket) return;
@@ -101,16 +99,6 @@ export default function Home() {
   function onRegistered(token) {
     storage.setSessionToken(token);
     setSessionToken(token);
-  }
-
-  function logout() {
-    storage.clearSessionToken();
-    setSessionToken("");
-    setQuestion(null);
-    setWaitingAfterFinish(false);
-    setAnswersSummary([]);
-    setProgress({ correctCount: 0, wrongCount: 0, done: false });
-    setGameState({ state: "IDLE" });
   }
 
   async function submitAnswer(answer) {
@@ -124,19 +112,12 @@ export default function Home() {
   }
 
   if (gameState.state === "IDLE" || gameState.state === "PENDING") {
-    return (
-      <>
-        <Logout onClick={logout} />
-        <Pending title="Diğer katılımcılar bekleniyor..." />
-      </>
-    );
+    return <Pending title="Diğer katılımcılar bekleniyor..." />;
   }
 
   if (gameState.state === "RUNNING") {
     return (
       <div style={{ maxWidth: 900, margin: "0 auto" }}>
-        <Logout onClick={logout} />
-
         {waitingAfterFinish ? (
           <>
             <DonePending title="Tebrikler! Bitirdiniz." />
@@ -156,27 +137,10 @@ export default function Home() {
   }
 
   if (gameState.state === "FINISHED") {
-    return (
-      <>
-        <Logout onClick={logout} />
-        <DonePending title="Yarışma sona erdi." />
-      </>
-    );
+    return <DonePending title="Yarışma sona erdi." />;
   }
 
   return null;
-}
-
-/* UI Helpers */
-
-function Logout({ onClick }) {
-  return (
-    <div className="logout-btn">
-      <button className="btn-ghost" onClick={onClick}>
-        Çıkış
-      </button>
-    </div>
-  );
 }
 
 function AnswerSummary({ answers }) {
