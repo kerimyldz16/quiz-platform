@@ -7,7 +7,7 @@ export async function setPendingIfIdle() {
   const redis = getRedis();
   const state = await redis.get("game:state");
 
-  if (state === "IDLE") {
+  if (!state || state === "IDLE") {
     await redis.set("game:state", "PENDING");
     return true;
   }
@@ -62,11 +62,18 @@ export async function getGameState() {
   const [state, startAt, totalQuestions] = await redis.mGet(
     "game:state",
     "game:startAt",
-    "game:totalQuestions"
+    "game:totalQuestions",
   );
 
+  const normalizedState = state || "IDLE";
+
+  // İlk çalıştırmada state hiç yoksa Redis'e yaz (kalıcı olsun)
+  if (!state) {
+    await redis.set("game:state", "IDLE");
+  }
+
   return {
-    state,
+    state: normalizedState,
     startAt: startAt ? Number(startAt) : null,
     totalQuestions: totalQuestions ? Number(totalQuestions) : null,
   };
@@ -86,7 +93,7 @@ export async function resetGame() {
     "game:totalQuestions",
     "game:startedBy",
     "game:endedBy",
-    "game:questions" // snapshot
+    "game:questions", // snapshot
   );
 
   // players set reset

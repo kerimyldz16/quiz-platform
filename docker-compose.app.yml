@@ -1,8 +1,8 @@
 services:
   app:
     build:
-      context: .
-      dockerfile: docker/app.Dockerfile
+      context: ./app
+      dockerfile: ../docker/app.Dockerfile
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://quiz:quiz@10.0.0.4:5432/quizdb
