@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SMS Doğrulama Prototipi</title>
+    <style>
+      :root {
+        --bg: #fafcfa;
+        --card: #ffffff;
+        --muted: #718096;
+        --primary: #91fb91;
+        --primary-dark: #6dd26d;
+        --accent: rgba(145, 251, 145, 0.08);
+        --border: #e8eef0;
+        --radius: 14px;
+        --shadow: 0 8px 20px rgba(10, 30, 10, 0.08);
+        --danger: #cb2431;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", Arial,
+          sans-serif;
+        background: linear-gradient(135deg, #fafcfa 0%, #f0f6f0 100%);
+        color: #1a202c;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+      }
+
+      .card {
+        width: 100%;
+        max-width: 520px;
+        background: var(--card);
+        border-radius: var(--radius);
+        border: 1px solid rgba(145, 251, 145, 0.08);
+        box-shadow: var(--shadow);
+        padding: 22px;
+      }
+
+      .title {
+        margin: 0 0 6px 0;
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: -0.2px;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 10px;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(145, 251, 145, 0.1);
+        border: 1px solid rgba(145, 251, 145, 0.25);
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .timer {
+        font-variant-numeric: tabular-nums;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          "Liberation Mono", "Courier New", monospace;
+      }
+
+      .otp-grid {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 10px;
+      }
+
+      .otp {
+        height: 44px;
+        width: 100%;
+        border-radius: 12px;
+        border: 1.5px solid var(--border);
+        background: #fff;
+        text-align: center;
+        font-size: 18px;
+        font-weight: 700;
+        outline: none;
+        transition: box-shadow 0.2s ease, border-color 0.2s ease;
+      }
+
+      .otp:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 5px var(--accent);
+      }
+
+      button {
+        border: 1px solid transparent;
+        border-radius: 10px;
+        padding: 11px 14px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+      }
+
+      .btn-primary {
+        width: 100%;
+        margin-top: 14px;
+        background: linear-gradient(
+          135deg,
+          var(--primary) 0%,
+          var(--primary-dark) 100%
+        );
+        color: #1a4d1a;
+        box-shadow: 0 4px 12px rgba(145, 251, 145, 0.25);
+      }
+
+      .btn-primary:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(145, 251, 145, 0.35);
+      }
+
+      .btn-primary:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+
+      .btn-link {
+        background: transparent;
+        border-color: transparent;
+        color: var(--primary-dark);
+        padding: 6px 0;
+        font-weight: 700;
+      }
+
+      .btn-link:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .msg {
+        margin-top: 12px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        display: none;
+        font-size: 14px;
+      }
+
+      .msg.error {
+        display: none;
+        background: rgba(203, 36, 49, 0.08);
+        border-left: 4px solid var(--danger);
+        color: var(--danger);
+      }
+
+      .msg.success {
+        display: none;
+        background: rgba(40, 167, 69, 0.08);
+        border-left: 4px solid #28a745;
+        color: #22863a;
+      }
+
+      @media (max-width: 420px) {
+        .card {
+          padding: 18px;
+        }
+        .otp-grid {
+          gap: 8px;
+        }
+        .otp {
+          height: 42px;
+          font-size: 18px;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="card">
+      <h1 class="title">Telefon Doğrulama</h1>
+      <div class="muted" style="line-height: 1.55">
+        Size bir kod gönderdik. Lütfen SMS ile gelen 6 haneli doğrulama kodunu
+        girin.
+      </div>
+
+      <div class="row">
+        <div class="pill">
+          <span class="muted">Kalan süre:</span>
+          <span class="timer" id="timer">01:00</span>
+        </div>
+
+        <button class="btn-link" id="resendBtn" type="button" disabled>
+          Kodu tekrar gönder
+        </button>
+      </div>
+
+      <form id="otpForm" autocomplete="one-time-code">
+        <div class="otp-grid" role="group" aria-label="Doğrulama kodu">
+          <input
+            class="otp"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            maxlength="1"
+            data-i="0"
+          />
+          <input
+            class="otp"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            maxlength="1"
+            data-i="1"
+          />
+          <input
+            class="otp"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            maxlength="1"
+            data-i="2"
+          />
+          <input
+            class="otp"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            maxlength="1"
+            data-i="3"
+          />
+          <input
+            class="otp"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            maxlength="1"
+            data-i="4"
+          />
+          <input
+            class="otp"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            maxlength="1"
+            data-i="5"
+          />
+        </div>
+
+        <button class="btn-primary" id="confirmBtn" type="submit" disabled>
+          Onayla
+        </button>
+
+        <div class="msg error" id="errBox"></div>
+        <div class="msg success" id="okBox"></div>
+      </form>
+    </div>
+
+    <script>
+      const inputs = Array.from(document.querySelectorAll(".otp"));
+      const confirmBtn = document.getElementById("confirmBtn");
+      const resendBtn = document.getElementById("resendBtn");
+      const timerEl = document.getElementById("timer");
+      const errBox = document.getElementById("errBox");
+      const okBox = document.getElementById("okBox");
+      const form = document.getElementById("otpForm");
+
+      let remaining = 60; // seconds
+      let timerHandle = null;
+
+      function onlyDigit(s) {
+        return String(s || "").replace(/\D/g, "");
+      }
+
+      function codeValue() {
+        return inputs.map((i) => i.value).join("");
+      }
+
+      function setMsg(type, text) {
+        errBox.style.display = "none";
+        okBox.style.display = "none";
+        if (!text) return;
+
+        if (type === "error") {
+          errBox.textContent = text;
+          errBox.style.display = "block";
+        } else {
+          okBox.textContent = text;
+          okBox.style.display = "block";
+        }
+      }
+
+      function updateConfirmEnabled() {
+        const v = codeValue();
+        confirmBtn.disabled = !/^[0-9]{6}$/.test(v);
+      }
+
+      function setTimer(sec) {
+        remaining = sec;
+        const mm = String(Math.floor(remaining / 60)).padStart(2, "0");
+        const ss = String(remaining % 60).padStart(2, "0");
+        timerEl.textContent = `${mm}:${ss}`;
+      }
+
+      function startTimer() {
+        if (timerHandle) clearInterval(timerHandle);
+        resendBtn.disabled = true;
+        setTimer(60);
+
+        timerHandle = setInterval(() => {
+          remaining -= 1;
+          setTimer(remaining);
+
+          if (remaining <= 0) {
+            clearInterval(timerHandle);
+            timerHandle = null;
+            resendBtn.disabled = false;
+            setMsg("error", "Süre doldu. Kodu tekrar gönderebilirsiniz.");
+          }
+        }, 1000);
+      }
+
+      inputs.forEach((inp, idx) => {
+        inp.addEventListener("input", (e) => {
+          setMsg("", "");
+          const v = onlyDigit(e.target.value).slice(0, 1);
+          e.target.value = v;
+
+          if (v && inputs[idx + 1]) inputs[idx + 1].focus();
+          updateConfirmEnabled();
+        });
+
+        inp.addEventListener("keydown", (e) => {
+          if (e.key === "Backspace" && !inp.value && inputs[idx - 1]) {
+            inputs[idx - 1].focus();
+            inputs[idx - 1].value = "";
+            updateConfirmEnabled();
+          }
+        });
+
+        inp.addEventListener("paste", (e) => {
+          e.preventDefault();
+          setMsg("", "");
+          const text = onlyDigit(
+            (e.clipboardData || window.clipboardData).getData("text")
+          );
+          const digits = text.slice(0, 6).split("");
+          for (let i = 0; i < 6; i++) {
+            inputs[i].value = digits[i] || "";
+          }
+          updateConfirmEnabled();
+          inputs[Math.min(5, digits.length - 1)].focus();
+        });
+      });
+
+      resendBtn.addEventListener("click", () => {
+        // Sadece UI prototipi: timer reset + alan temizle
+        inputs.forEach((i) => (i.value = ""));
+        updateConfirmEnabled();
+        setMsg("success", "Kod tekrar gönderildi.");
+        inputs[0].focus();
+        startTimer();
+      });
+
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const v = codeValue();
+        if (!/^[0-9]{6}$/.test(v)) {
+          setMsg("error", "Lütfen 6 haneli kodu girin.");
+          return;
+        }
+        // UI prototipi: sadece başarı mesajı
+        setMsg("success", "Kod onaylandı.");
+      });
+
+      // init
+      inputs[0].focus();
+      updateConfirmEnabled();
+      startTimer();
+    </script>
+  </body>
+</html>

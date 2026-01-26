@@ -6,7 +6,7 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://quiz:quiz@10.0.0.4:5432/quizdb
-      REDIS_URL: redis://10.0.0.3:6379
+      REDIS_URL: redis://10.0.0.5:6379
       ADMIN_JWT_SECRET: Borusannext2026
       ADMIN_USER: admin
       ADMIN_PASS: borusannextyarisma2026
